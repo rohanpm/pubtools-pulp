@@ -3,14 +3,15 @@ import os
 import textwrap
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-from pubtools.pulplib import Client
+from .step import StepDecorator
+from .services import Services
 
 
 LOG = logging.getLogger("pulp-task")
 LOG_FORMAT = "%(asctime)s [%(levelname)-8s] %(message)s"
 
 
-class PulpTask(object):
+class PulpTask(Services):
     """Base class for Pulp CLI tasks
 
     Instances for PulpTask subclass may be obtained to request a Pulp
@@ -23,8 +24,9 @@ class PulpTask(object):
     """
 
     def __init__(self):
+        super(PulpTask, self).__init__()
+
         self._args = None
-        self._pulp_client = None
 
         self.parser = ArgumentParser(
             description=self.description, formatter_class=RawDescriptionHelpFormatter
@@ -65,46 +67,81 @@ class PulpTask(object):
             self._args = self.parser.parse_args()
         return self._args
 
-    @property
-    def pulp_client(self):
-        """Pulp client for the task
+    @classmethod
+    def step(cls, name):
+        """A decorator to mark an instance method as a discrete workflow step.
 
-        returns the client if available
-        else gets one using the info from parsed args
-        Pulp password for the client can also be provided as
-        environment variable PULP_PASSWORD
+        Marking a method as a step has effects:
+
+        - Log messages will be produced when entering and leaving the method
+        - The method can be skipped if requested by the caller (via --skip argument)
+
+        Steps may be written as plain blocking functions, or as non-blocking
+        functions which accept or return Futures.  A single Future or a list of
+        Futures may be used.
+
+        When Futures are used, the following semantics apply:
+
+        - The step is considered *started* once *any* of the input futures has finished
+        - The step is considered *failed* once *any* of the output futures has failed
+        - The step is considered *finished* once *all* of the output futures have finished
         """
-        if not self._pulp_client:
-            self._pulp_client = self._get_pulp_client()
-        return self._pulp_client
-
-    def _get_pulp_client(self):
-        auth = None
-
-        # checks if pulp password is available as enviornment variable
-        if self.args.pulp_user:
-            pulp_password = self.args.pulp_password or os.environ.get("PULP_PASSWORD")
-            if not pulp_password:
-                LOG.warning("No pulp password provided for %s", self.args.pulp_user)
-            auth = (self.args.pulp_user, pulp_password)
-
-        return Client(self.args.pulp_url, auth=auth)
+        return StepDecorator(name)
 
     def _basic_args(self):
         # minimum args required for a pulp CLI task
-
-        self.parser.add_argument("--pulp-url", help="Pulp server URL", required=True)
-        self.parser.add_argument("--pulp-user", help="Pulp username", default=None)
-        self.parser.add_argument(
-            "--pulp-password",
-            help="Pulp password (or set PULP_PASSWORD environment variable)",
-            default=None,
-        )
         self.parser.add_argument("--verbose", action="store_true", help="show logs")
         self.parser.add_argument(
             "--debug",
             action="store_true",
             help="show debug statements. " "Used along --verbose",
+        )
+
+        self._add_pulp_args()
+        self._add_fastpurge_args()
+        self._add_udcache_args()
+
+    def _add_pulp_args(self):
+        group = self.parser.add_argument_group("Pulp")
+        group.add_argument("--pulp-url", help="Pulp server URL", required=True)
+        group.add_argument("--pulp-user", help="Pulp username", default=None)
+        group.add_argument(
+            "--pulp-password",
+            help="Pulp password (or set PULP_PASSWORD environment variable)",
+            default=None,
+        )
+        group.add_argument(
+            "--pulp-insecure",
+            action="store_true",
+            help="Allow unverified HTTPS connection to Pulp",
+        )
+
+    def _add_fastpurge_args(self):
+        group = self.parser.add_argument_group("Fast Purge")
+
+        group.add_argument(
+            "--fastpurge-host", help="Fast Purge hostname (xxx.purge.akamaiapis.net)"
+        )
+        group.add_argument("--fastpurge-client-token", help="Fast Purge client token")
+        group.add_argument(
+            "--fastpurge-client-secret",
+            help=(
+                "Fast Purge client secret "
+                "(or set FASTPURGE_SECRET environment variable)"
+            ),
+            default=os.environ.get("FASTPURGE_SECRET"),
+        )
+        group.add_argument("--fastpurge-access-token", help="Fast Purge access token")
+
+    def _add_udcache_args(self):
+        group = self.parser.add_argument_group("Unified Downloads Cache API")
+
+        group.add_argument("--udcache-url", help="Base URL of UD cache flush API")
+        group.add_argument("--udcache-user", help="Username for UD cache flush")
+        group.add_argument(
+            "--udcache-password",
+            help="Password for UD cache flush (or set UDCACHE_PASSWORD)",
+            default=os.environ.get("UDCACHE_PASSWORD"),
         )
 
     def _setup_logging(self):
