@@ -14,7 +14,7 @@ def p_add_args():
 
 
 def test_task_run():
-    """ raises if run() is not implemeted"""
+    """raises if run() is not implemeted"""
     task = PulpTask()
     with pytest.raises(NotImplementedError):
         task.run()
@@ -51,7 +51,7 @@ def test_pulp_client(p_add_args):
 
 def test_main(p_add_args):
     """Checks main returns without exception when invoked with minimal args
-        assuming run() and add_args() are implemented
+    assuming run() and add_args() are implemented
     """
     task = PulpTask()
     arg = ["", "--url", "http://some.url", "--verbose", "--debug"]
