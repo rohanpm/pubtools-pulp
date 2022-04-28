@@ -50,7 +50,7 @@ def test_uploads_shared(data_path):
     queue = ctx.new_queue()
     phase = Upload(
         context=ctx,
-        pulp_client=client_wrapper,
+        pulp_client_factory=lambda: client_wrapper,
         pre_push=None,
         in_queue=queue,
         update_push_items=lambda _: None,

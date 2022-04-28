@@ -66,8 +66,14 @@ class CachingPulpClientService(PulpClientService):
 
     @property
     def caching_pulp_client(self):
-        """A caching Pulp client used during task, instantiated on demand."""
+        """A shared caching Pulp client used during task, instantiated on demand."""
         with self.__lock:
             if not self.__instance:
-                self.__instance = CachingPulpClient(self.pulp_client)
+                self.__instance = self.new_caching_pulp_client(self.pulp_client)
         return self.__instance
+
+    def new_caching_pulp_client(self, pulp_client=None):
+        """Returns a new caching Pulp client with appropriate configuration,
+        wrapping the specified client if given or a new client otherwise.
+        """
+        return CachingPulpClient(pulp_client or self.new_pulp_client())

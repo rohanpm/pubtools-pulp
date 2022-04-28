@@ -13,7 +13,7 @@ def test_associate_order():
     queue = ctx.new_queue(maxsize=10000)
     phase = Associate(
         context=ctx,
-        pulp_client=None,
+        pulp_client_factory=lambda: None,
         pre_push=None,
         allow_unsigned=True,
         in_queue=queue,

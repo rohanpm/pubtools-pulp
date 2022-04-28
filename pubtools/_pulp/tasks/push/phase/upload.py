@@ -27,13 +27,13 @@ class Upload(Phase):
     """
 
     def __init__(
-        self, context, update_push_items, pulp_client, pre_push, in_queue, **_
+        self, context, update_push_items, pulp_client_factory, pre_push, in_queue, **_
     ):
         super(Upload, self).__init__(
             context, in_queue=in_queue, name="Upload items to Pulp"
         )
         self.update_push_items = update_push_items
-        self.pulp_client = pulp_client
+        self.pulp_client = pulp_client_factory()
         self.pre_push = pre_push
 
     def _update_after_uploaded(self, item_f):

@@ -69,14 +69,15 @@ class PulpClientService(Service):
 
     @property
     def pulp_client(self):
-        """A Pulp client used during task, instantiated on demand."""
+        """A shared Pulp client used during task, instantiated on demand."""
         with self.__lock:
             if not self.__instance:
-                self.__instance = self.__get_instance()
+                self.__instance = self.new_pulp_client()
                 self.__instance.__enter__()
         return self.__instance
 
-    def __get_instance(self):
+    def new_pulp_client(self):
+        """Creates and returns a new Pulp client with appropriate config."""
         auth = None
         args = self._service_args
 

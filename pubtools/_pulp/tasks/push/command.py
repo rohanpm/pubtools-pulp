@@ -65,6 +65,28 @@ class Push(
             "--source", action="append", help="Source(s) of content to be pushed"
         )
 
+    def pulp_client_for_phase(self):
+        """Returns a Pulp client for use within a single phase."""
+
+        if self.args.pulp_fake:
+            # If using --pulp-fake, we have to always share a single instance because
+            # the fakes do not support sharing each other's state like a real client.
+            # FIXME: does this mean it is possible to deadlock when trying to use the
+            # fake on a very large push?
+            return self.pulp_client
+
+        # When using a real server we want to use a separate client per phase.
+        # The reason is that clients under the hood have some fixed size thread pools
+        # for certain things (e.g. number of requests in flight at once). If the same
+        # client is used by multiple phases, this means one phase can block another
+        # since both compete for the same resources.
+        #
+        # The worst-case scenario can trigger a deadlock: all of the client's request
+        # threads can be blocked trying to put an item onto a phase's output queue,
+        # while the next phase can't consume from its input queue because it's blocked
+        # on a Pulp request using the same client.
+        return self.new_caching_pulp_client()
+
     def run(self):
         # Push workflow.
         #
@@ -95,7 +117,7 @@ class Push(
             # all used by every phase.
             kwargs.update(
                 context=ctx,
-                pulp_client=self.caching_pulp_client,
+                pulp_client_factory=self.pulp_client_for_phase,
                 pre_push=self.args.pre_push,
                 allow_unsigned=self.args.allow_unsigned,
                 update_push_items=collect_phase.update_push_items,

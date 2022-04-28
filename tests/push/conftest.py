@@ -6,7 +6,6 @@ from more_executors.futures import f_return
 from pushcollector import Collector
 
 from pubtools.pulplib import (
-    Client,
     FileRepository,
     YumRepository,
     Task,
@@ -14,6 +13,7 @@ from pubtools.pulplib import (
 
 from pubtools._pulp.tasks.push import Push
 from pubtools._pulp.services.fakepulp import PersistentFake
+from pubtools._pulp.services.cachingpulp import CachingPulpClient
 
 
 class FakePush(Push):
@@ -27,17 +27,23 @@ class FakePush(Push):
 
     @property
     def pulp_client(self):
+        # If we get here it means something has gone wrong, as Push task is
+        # strictly expected to obtain clients via pulp_client_for_phase.
+        raise AssertionError("pulp_client called unexpectedly during Push")
+
+    def pulp_client_for_phase(self):
         # Super should give a Pulp client
-        assert isinstance(super(FakePush, self).pulp_client, Client)
+        assert isinstance(
+            super(FakePush, self).pulp_client_for_phase(), CachingPulpClient
+        )
 
         # But we'll substitute our own
         return self.controller.client
 
 
 class NoCopyPush(FakePush):
-    @property
-    def pulp_client(self):
-        return NoCopyClient(super(NoCopyPush, self).pulp_client)
+    def pulp_client_for_phase(self):
+        return NoCopyClient(super(NoCopyPush, self).pulp_client_for_phase())
 
 
 class NoCopyClient(object):

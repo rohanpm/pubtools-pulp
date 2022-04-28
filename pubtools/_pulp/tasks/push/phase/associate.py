@@ -17,11 +17,13 @@ class Associate(Phase):
     - executes Pulp association (copy) tasks.
     """
 
-    def __init__(self, context, pulp_client, pre_push, allow_unsigned, in_queue, **_):
+    def __init__(
+        self, context, pulp_client_factory, pre_push, allow_unsigned, in_queue, **_
+    ):
         super(Associate, self).__init__(
             context, in_queue=in_queue, name="Associate items in Pulp"
         )
-        self.pulp_client = pulp_client
+        self.pulp_client = pulp_client_factory()
         self.pre_push = pre_push
         self.copy_options = CopyOptions(require_signed_rpms=not allow_unsigned)
 

@@ -18,11 +18,11 @@ class QueryPulp(Phase):
     - none.
     """
 
-    def __init__(self, context, pulp_client, in_queue, **_):
+    def __init__(self, context, pulp_client_factory, in_queue, **_):
         super(QueryPulp, self).__init__(
             context, in_queue=in_queue, name="Query items in Pulp"
         )
-        self.pulp_client = pulp_client
+        self.pulp_client = pulp_client_factory()
 
     def run(self):
         for batch in self.iter_input_batched():
