@@ -234,6 +234,7 @@ class Context(object):
                 bar_str = bar_str[:-6] + " ??? ]"
 
             formatted_strs.append(bar_str)
+            formatted_strs.append("     %s" % (counts,))
 
             # Add counts to the structured event as well.
             event["phases"].append(
