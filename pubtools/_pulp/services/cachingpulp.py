@@ -23,9 +23,11 @@ class CachingPulpClient(object):
     def get_repository(self, repo_id):
         with self._lock:
             # Use cached object if we have one - but not if it was
-            # unsuccessful.
+            # unsuccessful or cancelled.
             out = self._repo_cache.get(repo_id)
-            if out and (not out.done() or not out.exception()):
+            if out and (
+                not out.done() or (not out.cancelled() and not out.exception())
+            ):
                 return out
 
         out = self._delegate.get_repository(repo_id)

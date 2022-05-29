@@ -91,7 +91,9 @@ class StepLogger(object):
             # has completed
             for f in input_future:
                 f.add_done_callback(
-                    lambda f: self.do_log_start() if not f.exception() else None
+                    lambda f: self.do_log_start()
+                    if (not f.cancelled() and not f.exception())
+                    else None
                 )
             return args
 
@@ -145,7 +147,11 @@ class StepLogger(object):
         # have completed
         completed = f_sequence(return_future)
         completed.add_done_callback(
-            lambda f: self.log_error() if completed.exception() else do_log()
+            # TODO: cancelled here is going to be logged as an error, should
+            # we differentiate it somehow?
+            lambda f: self.log_error()
+            if (completed.cancelled() or completed.exception())
+            else do_log()
         )
 
     def with_logs(self, ret):

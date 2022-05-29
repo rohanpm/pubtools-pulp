@@ -39,7 +39,7 @@ class Upload(Phase):
     def _update_after_uploaded(self, item_f):
         # Callback invoked after an item has been uploaded, to ensure
         # update_push_items is called (if upload succeeded).
-        if not item_f.exception():
+        if not item_f.cancelled() and not item_f.exception():
             self.update_push_items([item_f.result()])
 
     def run(self):
